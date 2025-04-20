@@ -22,9 +22,16 @@ census_day <- dbGetQuery(sqlite, "SELECT * FROM CensusDay WHERE
                           NOT SchoolCode = 1 AND
                           NOT SchoolCode = 0")
 
+acgr <- dbGetQuery(sqlite, "SELECT * FROM ACGR WHERE AggregateLevel = 'S' AND
+                    NOT ReportingCategory = 'GX' AND
+                    NOT SchoolCode = 1 AND
+                    NOT SchoolCode = 0")
+
 # Replace all '*' characters with zeros.
+acgr[acgr == "*"] <- 0
 census_day[census_day == "*"] <- 0
 ```
+
 ```{r convert_col_types}
 census_day$GR_TK <- as.integer(census_day$GR_TK)
 census_day$GR_KN <- as.integer(census_day$GR_KN)
@@ -41,7 +48,36 @@ census_day$GR_10 <- as.integer(census_day$GR_10)
 census_day$GR_11 <- as.integer(census_day$GR_11)
 census_day$GR_12 <- as.integer(census_day$GR_12)
 
+acgr$AdultEd <- as.integer(acgr$AdultEd)
+acgr$AdultEdRate <- as.numeric(acgr$AdultEdRate)
+acgr$Biliteracy <- as.integer(acgr$Biliteracy)
+acgr$BiliteracyRate <- as.numeric(acgr$BiliteracyRate)
+acgr$CPP <- as.integer(acgr$CPP)
+acgr$CPPRate <- as.numeric(acgr$CPPRate)
+acgr$CohortStudents <- as.integer(acgr$CohortStudents)
+acgr$DistrictCode <- as.integer(acgr$DistrictCode)
+acgr$Dropout <- as.integer(acgr$Dropout)
+acgr$DropoutRate <- as.numeric(acgr$DropoutRate)
+acgr$Exemption <- as.integer(acgr$Exemption)
+acgr$ExemptionRate <- as.numeric(acgr$ExemptionRate)
+acgr$GED <- as.integer(acgr$GED)
+acgr$GEDRate <- as.numeric(acgr$GEDRate)
+acgr$Merit <- as.integer(acgr$Merit)
+acgr$MeritRate <- as.numeric(acgr$MeritRate)
+acgr$Other <- as.integer(acgr$Other)
+acgr$OtherRate <- as.numeric(acgr$OtherRate)
+acgr$RegHSDiploma <- as.integer(acgr$RegHSDiploma)
+acgr$RegHSDiplomaRate <- as.numeric(acgr$RegHSDiplomaRate)
+acgr$SPED <- as.integer(acgr$SPED)
+acgr$SPEDRate <- as.numeric(acgr$SPEDRate)
+acgr$SchoolCode <- as.integer(acgr$SchoolCode)
+acgr$StillEnrolled <- as.integer(acgr$StillEnrolled)
+acgr$StillEnrolledRate <- as.numeric(acgr$StillEnrolledRate)
+acgr$UniReqs <- as.integer(acgr$UniReqs)
+acgr$UniReqsPercent <- as.numeric(acgr$UniReqsPercent)
+
 sapply(census_day, class)
+sapply(acgr, class)
 ```
 
 ```{r widen_df}
@@ -55,13 +91,36 @@ v_names <- c(
 
 wide_census_day <- reshape(
   census_day, idvar = c("AcademicYear", "SchoolCode"),
-  timevar = "ReportingCategory", direction = "wide",
-  v.names = v_names 
+  timevar = "ReportingCategory", 
+  direction = "wide", v.names = v_names 
+)
+
+acgr_v_names <- c(
+  "AdultEd", "AdultEdRate",
+  "Biliteracy", "BiliteracyRate",
+  "CPP", "CPPRate",
+  "CohortStudents", "DASS",
+  "Dropout", "DropoutRate",
+  "Exemption", "ExemptionRate",
+  "GED", "GEDRate",
+  "Merit", "MeritRate",
+  "Other", "OtherRate",
+  "RegHSDiploma", "RegHSDiplomaRate",
+  "SPED", "SPEDRate",
+  "StillEnrolled", "StillEnrolledRate",
+  "UniReqs", "UniReqsPercent"
+)
+
+wide_acgr <- reshape(
+  acgr, idvar = c("CharterSchool", "DASS", "SchoolCode", "Year"),
+  timevar = "ReportingCategory",
+  direction = "wide", v.names = acgr_v_names
 )
 ```
 
 ```{r write_table}
 dbWriteTable(conn = sqlite, name = "CensusDayWide", value = wide_census_day)
+dbWriteTable(conn = sqlite, name = "ACGRWide", value = wide_acgr)
 dbListTables(conn = sqlite)
 ```
 
