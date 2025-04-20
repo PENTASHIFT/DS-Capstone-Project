@@ -1,0 +1,70 @@
+---
+title: "data-manipulation"
+author: "Joshua Munsey"
+date: "2025-04-20"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+library(DBI)
+library(dplyr)
+
+sqlite <- dbConnect(RSQLite::SQLite(), "../data/databases/exploration.db")
+```
+
+```{r data_load}
+census_day <- dbGetQuery(sqlite, "SELECT * FROM CensusDay WHERE 
+                          (ReportingCategory LIKE '%GN%' OR 
+                          ReportingCategory LIKE '%RE%' OR
+                          ReportingCategory = 'TA') AND 
+                          NOT ReportingCategory = 'GN_X' AND
+                          AggregateLevel = 'S' AND
+                          NOT SchoolCode = 1 AND
+                          NOT SchoolCode = 0")
+
+# Replace all '*' characters with zeros.
+census_day[census_day == "*"] <- 0
+```
+```{r convert_col_types}
+census_day$GR_TK <- as.integer(census_day$GR_TK)
+census_day$GR_KN <- as.integer(census_day$GR_KN)
+census_day$GR_01 <- as.integer(census_day$GR_01)
+census_day$GR_02 <- as.integer(census_day$GR_02)
+census_day$GR_03 <- as.integer(census_day$GR_03)
+census_day$GR_04 <- as.integer(census_day$GR_04)
+census_day$GR_05 <- as.integer(census_day$GR_05)
+census_day$GR_06 <- as.integer(census_day$GR_06)
+census_day$GR_07 <- as.integer(census_day$GR_07)
+census_day$GR_08 <- as.integer(census_day$GR_08)
+census_day$GR_09 <- as.integer(census_day$GR_09)
+census_day$GR_10 <- as.integer(census_day$GR_10)
+census_day$GR_11 <- as.integer(census_day$GR_11)
+census_day$GR_12 <- as.integer(census_day$GR_12)
+
+sapply(census_day, class)
+```
+
+```{r widen_df}
+v_names <- c(
+  "TOTAL_ENR", "GR_TK", "GR_KN", 
+  "GR_01", "GR_02", "GR_03", 
+  "GR_04", "GR_05", "GR_06", 
+  "GR_07", "GR_08", "GR_09", 
+  "GR_10", "GR_11", "GR_12"
+)
+
+wide_census_day <- reshape(
+  census_day, idvar = c("AcademicYear", "SchoolCode"),
+  timevar = "ReportingCategory", direction = "wide",
+  v.names = v_names 
+)
+```
+
+```{r write_table}
+dbWriteTable(conn = sqlite, name = "CensusDayWide", value = wide_census_day)
+dbListTables(conn = sqlite)
+```
+
+```{r cleanup, include=FALSE}
+dbDisconnect(sqlite)
+```
