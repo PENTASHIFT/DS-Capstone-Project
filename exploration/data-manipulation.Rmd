@@ -27,9 +27,9 @@ acgr <- dbGetQuery(sqlite, "SELECT * FROM ACGR WHERE AggregateLevel = 'S' AND
                     NOT SchoolCode = 1 AND
                     NOT SchoolCode = 0")
 
-# Replace all '*' characters with zeros.
-acgr[acgr == "*"] <- 0
-census_day[census_day == "*"] <- 0
+# Replace all '*' characters with NA.
+acgr[acgr == "*"] <- NA
+census_day[census_day == "*"] <- NA
 ```
 
 ```{r convert_col_types}
