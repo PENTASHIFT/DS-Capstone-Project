@@ -3,3 +3,4 @@ venv
 data
 .Rproj
 .Rproj.user
+__pycache__
