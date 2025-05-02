@@ -58,7 +58,7 @@ def train_random_forest_model(
     plt.yticks(range(top_n)[::-1], feature_names[top_indices])
     plt.xlabel("Importance")
     plt.ylabel("Feature")
-    plt.title("Random Forest Feature Importances")
+    plt.title(f"Random Forest Feature Importances: {target_column}")
     plt.tight_layout()
     plt.show()
 
