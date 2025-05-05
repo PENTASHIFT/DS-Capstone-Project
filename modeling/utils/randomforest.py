@@ -6,7 +6,7 @@ import numpy as np
 
 
 def train_random_forest_model(
-    df, target_column, columns_to_drop, test_size=0.2, random_state=42
+    df, target_column, columns_to_drop, test_size=0.2, random_state=42, print_plot=True
 ):
     """
     Trains a Random Forest regression model and evaluates its performance.
@@ -51,16 +51,17 @@ def train_random_forest_model(
     feature_names = X.columns
     sorted_indices = np.argsort(importances)[::-1]
 
-    top_n = 10
-    top_indices = sorted_indices[:top_n]
-    plt.figure(figsize=(12, 8))
-    plt.barh(range(top_n)[::-1], importances[top_indices], align="center")
-    plt.yticks(range(top_n)[::-1], feature_names[top_indices])
-    plt.xlabel("Importance")
-    plt.ylabel("Feature")
-    plt.title(f"Random Forest Feature Importances: {target_column}")
-    plt.tight_layout()
-    plt.show()
+    if print_plot:
+        top_n = 10
+        top_indices = sorted_indices[:top_n]
+        plt.figure(figsize=(12, 8))
+        plt.barh(range(top_n)[::-1], importances[top_indices], align="center")
+        plt.yticks(range(top_n)[::-1], feature_names[top_indices])
+        plt.xlabel("Importance")
+        plt.ylabel("Feature")
+        plt.title(f"Random Forest Feature Importances: {target_column}")
+        plt.tight_layout()
+        plt.show()
 
     return {
         "model": rf_regressor,
