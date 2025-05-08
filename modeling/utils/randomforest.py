@@ -9,7 +9,13 @@ plt.style.use("default")
 
 
 def train_random_forest_model(
-    df, target_column, columns_to_drop, test_size=0.2, random_state=42, print_plot=True
+    df,
+    target_column,
+    columns_to_drop,
+    test_size=0.2,
+    random_state=42,
+    print_plot=True,
+    n_jobs=1,
 ):
     """
     Trains a Random Forest regression model and evaluates its performance.
@@ -39,7 +45,7 @@ def train_random_forest_model(
     )
 
     rf_regressor = RandomForestRegressor(
-        n_estimators=100, random_state=random_state, n_jobs=-1
+        n_estimators=100, random_state=random_state, n_jobs=n_jobs
     )
 
     # Fit the model
@@ -231,6 +237,7 @@ def cross_validate_random_forest(
     random_state=42,
     print_results=True,
     rf_params=None,
+    n_jobs=1,
 ):
     """
     Performs k-fold cross-validation on a Random Forest regression model.
@@ -268,7 +275,11 @@ def cross_validate_random_forest(
 
     # Define default Random Forest parameters if not provided
     if rf_params is None:
-        rf_params = {"n_estimators": 100, "random_state": random_state, "n_jobs": -1}
+        rf_params = {
+            "n_estimators": 100,
+            "random_state": random_state,
+            "n_jobs": n_jobs,
+        }
 
     rf_regressor = RandomForestRegressor(**rf_params)
 
@@ -282,12 +293,14 @@ def cross_validate_random_forest(
     kf = KFold(n_splits=n_splits, shuffle=True, random_state=random_state)
 
     rmse_scores = -cross_val_score(
-        rf_regressor, X, y, cv=kf, scoring=rmse_scorer, n_jobs=-1
+        rf_regressor, X, y, cv=kf, scoring=rmse_scorer, n_jobs=n_jobs
     )
     mae_scores = -cross_val_score(
-        rf_regressor, X, y, cv=kf, scoring=mae_scorer, n_jobs=-1
+        rf_regressor, X, y, cv=kf, scoring=mae_scorer, n_jobs=-n_jobs
     )
-    r2_scores = cross_val_score(rf_regressor, X, y, cv=kf, scoring=r2_scorer, n_jobs=-1)
+    r2_scores = cross_val_score(
+        rf_regressor, X, y, cv=kf, scoring=r2_scorer, n_jobs=-n_jobs
+    )
 
     cv_results = {
         "RMSE": {

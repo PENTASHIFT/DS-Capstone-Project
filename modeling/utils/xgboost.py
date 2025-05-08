@@ -15,7 +15,13 @@ from sklearn.metrics import (
 
 
 def train_xgboost_model(
-    df, target_column, columns_to_drop, test_size=0.2, random_state=42, print_plot=True
+    df,
+    target_column,
+    columns_to_drop,
+    test_size=0.2,
+    random_state=42,
+    print_plot=True,
+    n_jobs=1,
 ):
     """
     Trains an XGBoost model on the provided DataFrame.
@@ -53,6 +59,7 @@ def train_xgboost_model(
         colsample_bytree=0.8,
         missing=np.nan,
         random_state=random_state,
+        n_jobs=n_jobs,
     )
 
     # Fit the model
@@ -283,6 +290,7 @@ def cross_validate_xgboost(
     random_state=42,
     print_results=True,
     xgb_params=None,
+    n_jobs=1,
 ):
     """
     Performs k-fold cross-validation on an XGBoost model.
@@ -340,13 +348,13 @@ def cross_validate_xgboost(
     kf = KFold(n_splits=n_splits, shuffle=True, random_state=random_state)
 
     rmse_scores = -cross_val_score(
-        xgb_regressor, X, y, cv=kf, scoring=rmse_scorer, n_jobs=-1
+        xgb_regressor, X, y, cv=kf, scoring=rmse_scorer, n_jobs=n_jobs
     )
     mae_scores = -cross_val_score(
-        xgb_regressor, X, y, cv=kf, scoring=mae_scorer, n_jobs=-1
+        xgb_regressor, X, y, cv=kf, scoring=mae_scorer, n_jobs=-n_jobs
     )
     r2_scores = cross_val_score(
-        xgb_regressor, X, y, cv=kf, scoring=r2_scorer, n_jobs=-1
+        xgb_regressor, X, y, cv=kf, scoring=r2_scorer, n_jobs=-n_jobs
     )
 
     cv_results = {
