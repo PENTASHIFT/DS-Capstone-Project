@@ -43,6 +43,7 @@ def train_xgboost_model(
     y = df[target_column]
 
     # Align X and y by dropping rows where y is NaN or infinite
+    y = pd.to_numeric(df[target_column], errors="coerce")
     mask = y.notna() & np.isfinite(y)
     X = X.loc[mask]
     y = y.loc[mask]
@@ -289,6 +290,7 @@ def cross_validate_xgboost(
     n_splits=5,
     random_state=42,
     print_results=True,
+    print_plot=False,
     xgb_params=None,
     n_jobs=1,
 ):
@@ -320,7 +322,7 @@ def cross_validate_xgboost(
     X = X.select_dtypes(include=[np.number])  # Select only numeric columns
     y = df[target_column]
 
-    # Align X and y by dropping rows where y is NaN or infinite
+    y = pd.to_numeric(df[target_column], errors="coerce")
     mask = y.notna() & np.isfinite(y)
     X = X.loc[mask]
     y = y.loc[mask]
@@ -372,11 +374,18 @@ def cross_validate_xgboost(
     }
 
     if print_results:
-        print(f"Cross-Validation Results for {target_column} ({n_splits} folds):")
+        if "Year" in df.columns:
+            year = df["Year"].iloc[0]
+        else:
+            year = df["AcademicYear"].iloc[0]
+        print(
+            f"Cross-Validation Results for {target_column} ({n_splits} folds) for {year}:"
+        )
         print(f"RMSE: {rmse_scores.mean():.4f} ± {rmse_scores.std():.4f}")
         print(f"MAE: {mae_scores.mean():.4f} ± {mae_scores.std():.4f}")
         print(f"R^2: {r2_scores.mean():.4f} ± {r2_scores.std():.4f}")
 
+    if print_plot:
         plt.figure(figsize=(12, 6))
 
         metrics = ["RMSE", "MAE", "R^2"]
@@ -399,6 +408,7 @@ def cross_validate_xgboost(
         "cv_results": cv_results,
         "feature_names": X.columns.tolist(),
         "target_column": target_column,
+        "Year": df["Year"].iloc[0] if "Year" in df.columns else df["AcademicYear"].iloc[0],
     }
 
 
