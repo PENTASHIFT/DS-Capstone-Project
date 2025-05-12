@@ -236,6 +236,7 @@ def cross_validate_random_forest(
     n_splits=5,
     random_state=42,
     print_results=True,
+    print_plot=False,
     rf_params=None,
     n_jobs=1,
 ):
@@ -269,6 +270,7 @@ def cross_validate_random_forest(
     y = df[target_column]
 
     # Align X and y by dropping rows where y is NaN
+    y = pd.to_numeric(df[target_column], errors="coerce")
     mask = y.notna()
     X = X.loc[mask]
     y = y.loc[mask]
@@ -317,11 +319,18 @@ def cross_validate_random_forest(
     }
 
     if print_results:
-        print(f"Cross-Validation Results for {target_column} ({n_splits} folds):")
+        if "Year" in df.columns:
+            year = df["Year"].iloc[0]
+        else:
+            year = df["AcademicYear"].iloc[0]
+        print(
+            f"Cross-Validation Results for {target_column} ({n_splits} folds) for {year}:"
+        )
         print(f"RMSE: {rmse_scores.mean():.4f} ± {rmse_scores.std():.4f}")
         print(f"MAE: {mae_scores.mean():.4f} ± {mae_scores.std():.4f}")
         print(f"R²: {r2_scores.mean():.4f} ± {r2_scores.std():.4f}")
 
+    if print_plot:
         plt.figure(figsize=(12, 6))
 
         metrics = ["RMSE", "MAE", "R²"]
@@ -331,7 +340,7 @@ def cross_validate_random_forest(
         for i, (metric, score, color) in enumerate(zip(metrics, scores, colors)):
             plt.subplot(1, 3, i + 1)
             plt.boxplot(score, patch_artist=True, boxprops=dict(facecolor=color))
-            plt.title(f"{metric} Cross-Validation")
+            plt.title(f"{metric} Cross-Validation for {target_column}")
             plt.grid(True, linestyle="--", alpha=0.7)
             plt.tight_layout()
 
