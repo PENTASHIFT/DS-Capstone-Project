@@ -32,6 +32,8 @@ acgr <- dbGetQuery(sqlite, "SELECT * FROM ACGR WHERE AggregateLevel = 'S' AND
 ELA <- dbGetQuery(sqlite, "SELECT * FROM ELA")
 Math <- dbGetQuery(sqlite, "SELECT * FROM Math")
 
+LTEL <- dbGetQuery(sqlite, "SELECT * FROM LTEL")
+
 # Replace all '*' characters with NA.
 acgr[acgr == "*"] <- NA
 census_day[census_day == "*"] <- NA
@@ -85,6 +87,7 @@ sapply(census_day, class)
 sapply(acgr, class)
 sapply(ELA, class)
 sapply(Math, class)
+sapply(LTEL, class)
 ```
 
 ```{r widen_df}
@@ -138,6 +141,15 @@ wide_math <- reshape(
 
 wide_ela <- wide_ela[wide_ela$SchoolCode != 0,]
 wide_math <- wide_math[wide_math$SchoolCode != 0,]
+
+LTEL_names <- c("EO", "IFEP", "EL", "RFEP", "TBD", "TotalEnrollment",
+             "AR", "LTEL", "EL4+", "EL03Y", "EL45Y", "EL6+Y", "Total-EE")
+
+wide_ltel <- reshape(
+  LTEL, idvar = c("cdsCode", "AcademicYear"),
+  timevar = "Grade",
+  direction = "wide", v.names = LTEL_names
+)
 ```
 
 ```{r write_table}
@@ -145,6 +157,7 @@ dbWriteTable(conn = sqlite, name = "CensusDayWide", value = wide_census_day)
 dbWriteTable(conn = sqlite, name = "ACGRWide", value = wide_acgr)
 dbWriteTable(conn = sqlite, name = "ELAWide", value = wide_ela)
 dbWriteTable(conn = sqlite, name = "MathWide", value = wide_math)
+dbWriteTable(conn = sqlite, name = "LTELWide", value = wide_ltel)
 dbListTables(conn = sqlite)
 ```
 
