@@ -408,7 +408,9 @@ def cross_validate_xgboost(
         "cv_results": cv_results,
         "feature_names": X.columns.tolist(),
         "target_column": target_column,
-        "Year": df["Year"].iloc[0] if "Year" in df.columns else df["AcademicYear"].iloc[0],
+        "Year": (
+            df["Year"].iloc[0] if "Year" in df.columns else df["AcademicYear"].iloc[0]
+        ),
     }
 
 
