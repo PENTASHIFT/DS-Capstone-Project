@@ -4,13 +4,14 @@ import xgboost as xgb
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import KFold, cross_val_score, train_test_split
 from sklearn.metrics import (
     mean_squared_error,
     r2_score,
     mean_absolute_error,
     mean_squared_error,
     r2_score,
+    make_scorer
 )
 
 
@@ -153,9 +154,6 @@ def plot_xgb_predicted_actual(
     plt.title(f"XGBoost Regression: Actual vs Predicted for {target_column}")
     plt.show()
 
-
-import matplotlib.pyplot as plt
-import pandas as pd
 
 plt.style.use("default")
 
@@ -309,15 +307,6 @@ def cross_validate_xgboost(
     Returns:
         dict: A dictionary containing cross-validation scores and the final trained model.
     """
-    from sklearn.model_selection import KFold, cross_val_score
-    from sklearn.metrics import (
-        mean_squared_error,
-        r2_score,
-        mean_absolute_error,
-        make_scorer,
-    )
-    import numpy as np
-
     X = df.drop(columns=columns_to_drop)
     X = X.select_dtypes(include=[np.number])  # Select only numeric columns
     y = df[target_column]
