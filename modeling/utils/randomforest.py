@@ -14,7 +14,8 @@ def train_random_forest_model(
     columns_to_drop,
     test_size=0.2,
     random_state=42,
-    print_plot=True,
+    print_plot=False,
+    print_results=False,
     n_jobs=1,
 ):
     """
@@ -74,12 +75,20 @@ def train_random_forest_model(
         plt.tight_layout()
         plt.show()
 
+    if print_results:
+        print(f"Random Forest Regression Results for {target_column}:")
+        print(f"RMSE: {rmse:.4f}")
+        print(f"MSE: {mse:.4f}")
+        print(f"R²: {r2:.4f}")
+
     return {
         "model": rf_regressor,
         "X": X,
         "y_pred": y_pred,
         "y_test": y_test,
         "metrics": {"MSE": mse, "RMSE": rmse, "R²": r2},
+        "feature_importances": dict(zip(feature_names, importances)),
+        "feature_names": feature_names,
     }
 
 
