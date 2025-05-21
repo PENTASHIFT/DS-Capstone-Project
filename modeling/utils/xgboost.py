@@ -22,6 +22,7 @@ def train_xgboost_model(
     test_size=0.2,
     random_state=42,
     print_plot=True,
+    print_results=True,
     n_jobs=1,
 ):
     """
