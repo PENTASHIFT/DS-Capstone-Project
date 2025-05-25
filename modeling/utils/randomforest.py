@@ -7,6 +7,151 @@ import pandas as pd
 
 plt.style.use("default")
 
+category_mapping = {
+    "RB": "African American",
+    "RI": "American Indian or Alaska Native",
+    "RA": "Asian",
+    "RF": "Filipino",
+    "RH": "Hispanic or Latino",
+    "RD": "Not Reported",
+    "RP": "Pacific Islander",
+    "RT": "Two or More Races",
+    "RW": "White",
+    "GM": "Male",
+    "GF": "Female",
+    "GX": "Non-Binary Gender",
+    "GZ": "Missing Gender",
+    "SE": "English Learners",
+    "SD": "Students with Disabilities",
+    "SS": "Socioeconomic",
+    "SM": "Migrant",
+    "SF": "Foster",
+    "SH": "Homeless",
+    "09": "9th Grade",
+    "10": "10th Grade",
+    "11": "11th Grade",
+    "12": "12th Grade",
+    "TA": "Total",
+}
+
+metric_mapping = {
+    "MeritRate": "Merit Rate",
+    "OtherRate": "Other Rate",
+    "SchoolCode": "School Code",
+    "Merit": "Merit",
+    "AdultEd": "Adult Education",
+    "CohortStudents": "Cohort Students",
+    "BiliteracyRate": "Biliteracy Rate",
+    "RegHSDiplomaRate": "Graduation Rate",
+    "DropoutRate": "Dropout Rate",
+    "UniReqsPercent": "College Readiness Rate",
+    "StillEnrolledRate": "Still Enrolled Rate",
+    "AdultEdRate": "Adult Education Rate",
+    "ExemptionRate": "Exemption Rate",
+    "GEDRate": "GED Rate",
+    "EO": "English Only",
+    "RFEP": "Reclassified Fluent English Proficient",
+    "CPP": "California Proficiency Program",
+    "IFEP": "Initial Fluent English Proficient",
+    "EL03Y": "English Learner for 0-3 years",
+    "EL6+Y": "English Learner for 6+ years",
+    "CPPRate": "California Proficiency Program Rate",
+    "LTEL": "Long-Term English Learner",
+    "AR": "At-Risk",
+}
+
+
+def format_feature_name(feature):
+    if "." in feature:
+        metric, category = feature.split(".")
+        # Get readable metric and category names from mappings if available
+        if "metric_mapping" in globals() and metric in metric_mapping:
+            metric = metric_mapping[metric]
+        if "category_mapping" in globals() and category in category_mapping:
+            category = category_mapping[category]
+        return f"{metric} - {category}"
+    return feature
+
+
+def plot_top_features_rf(cv_results, target_variable, top_n=10, figsize=(12, 8)):
+    """
+    Plots the top features by importance for a Random Forest model in a horizontal bar chart.
+
+    Args:
+        cv_results (dict): Dictionary containing cross-validation results
+        target_variable (str): Name of the target variable for the plot title
+        top_n (int): Number of top features to display
+        figsize (tuple): Figure size as (width, height)
+
+    Returns:
+        list: List of the top feature names
+    """
+    model = cv_results["model"]
+    feature_names = cv_results["feature_names"]
+    importances = dict(zip(feature_names, model.feature_importances_))
+
+    avg_importances = {feature: value for feature, value in importances.items()}
+    top_features = sorted(avg_importances.items(), key=lambda x: x[1], reverse=True)[
+        :top_n
+    ]
+
+    top_features = top_features[::-1]
+
+    formatted_names = [format_feature_name(f[0]) for f in top_features]
+    importance_values = [f[1] for f in top_features]
+
+    fig, ax = plt.subplots(figsize=figsize)
+
+    y_pos = range(len(formatted_names))
+    ax.barh(
+        y_pos,
+        importance_values,
+        align="center",
+        color="forestgreen",
+        edgecolor="darkgreen",
+        alpha=0.8,
+    )
+
+    r2_key = "R^2" if "R^2" in cv_results["cv_results"] else "R²"
+
+    model_stats = (
+        f"RMSE: {cv_results['cv_results']['RMSE']['mean']:.4f} ± {cv_results['cv_results']['RMSE']['std']:.4f}\n"
+        f"MAE: {cv_results['cv_results']['MAE']['mean']:.4f} ± {cv_results['cv_results']['MAE']['std']:.4f}\n"
+        f"R²: {cv_results['cv_results'][r2_key]['mean']:.4f} ± {cv_results['cv_results'][r2_key]['std']:.4f}"
+    )
+
+    ax.text(
+        0.98,
+        0.05,
+        model_stats,
+        transform=ax.transAxes,
+        fontsize=10,
+        verticalalignment="bottom",
+        horizontalalignment="right",
+        bbox=dict(boxstyle="round", facecolor="white", alpha=0.8, edgecolor="gray"),
+    )
+
+    ax.set_yticks(y_pos)
+    ax.set_yticklabels(formatted_names)
+    ax.set_xlabel("Feature Importance", fontsize=12)
+
+    formatted_target = format_feature_name(target_variable)
+    ax.set_title(
+        f"Top Features by Importance for {formatted_target} (Random Forest)",
+        fontsize=14,
+    )
+    ax.grid(axis="x", linestyle="--", alpha=0.6)
+
+    plt.tight_layout()
+    plt.show()
+
+    return [
+        f[0]
+        for f in sorted(avg_importances.items(), key=lambda x: x[1], reverse=True)[
+            :top_n
+        ]
+    ]
+
 
 def train_random_forest_model(
     df,
@@ -57,6 +202,7 @@ def train_random_forest_model(
     mse = mean_squared_error(y_test, y_pred)
     rmse = np.sqrt(mse)
     r2 = r2_score(y_test, y_pred)
+    mae = np.mean(np.abs(y_test - y_pred))
 
     # Get feature importances
     importances = rf_regressor.feature_importances_
@@ -76,10 +222,11 @@ def train_random_forest_model(
         plt.show()
 
     if print_results:
-        print(f"Random Forest Regression Results for {target_column}:")
-        print(f"RMSE: {rmse:.4f}")
-        print(f"MSE: {mse:.4f}")
-        print(f"R²: {r2:.4f}")
+        print(f"Model trained for target: {target_column}")
+        print(f"Mean Squared Error (MSE): {mse:.4f}")
+        print(f"Root Mean Squared Error (RMSE): {rmse:.4f}")
+        print(f"Mean Absolute Error (MAE): {mae:.4f}")
+        print(f"R^2 Score: {r2:.4f}")
 
     return {
         "model": rf_regressor,
@@ -120,17 +267,29 @@ def plot_rf_actual_predicted(y_test, y_pred, target_column):
 
 def plot_top_k_features_rf(models, target_variable: str, k=5):
     """
-    Plots the top k features by average importance across all years for Random Forest models.
+    Plots the top k features based on average importance across all years.
 
     Args:
         models (dict): Dictionary of Random Forest models by year.
-        target_variable (str): The target variable for which the models were trained.
-        k (int): Number of top features to plot.
+        target_variable (str): Name of the target variable.
+        k (int): Number of top features to show.
 
     Returns:
-        list: Top k features based on average importance.
+        list: List of top features.
     """
     feature_importances = {}
+
+    # Format feature names for better readability
+    def format_feature_name(feature):
+        if "." in feature:
+            metric, category = feature.split(".")
+            # Get readable metric and category names from mappings if available
+            if "metric_mapping" in globals() and metric in metric_mapping:
+                metric = metric_mapping[metric]
+            if "category_mapping" in globals() and category in category_mapping:
+                category = category_mapping[category]
+            return f"{metric} - {category}"
+        return feature
 
     for year, model_dict in models.items():
         model = model_dict["model"]
@@ -139,23 +298,30 @@ def plot_top_k_features_rf(models, target_variable: str, k=5):
         feature_importances[year] = dict(zip(feature_names, importances))
 
     df = pd.DataFrame(feature_importances).T.fillna(0)
-
-    mean_importance = df.mean(axis=0).sort_values(ascending=False)
-    top_k_features = mean_importance.head(k).index.tolist()
-    df_top = df[top_k_features]
+    mean_importance = df.mean().sort_values(ascending=False)
+    top_features = mean_importance.head(k).index.tolist()
+    df_top = df[top_features]
 
     plt.figure(figsize=(14, 6))
     ax = df_top.plot(kind="bar", figsize=(14, 6), width=0.8)
 
-    plt.title(f"Top {k} Features by Year for {target_variable} (Random Forest)")
-    plt.ylabel("Feature Importance")
+    # Get average R² if available
+    r2_values = [m.get("metrics", {}).get("R²", None) for m in models.values()]
+    r2_values = [r2 for r2 in r2_values if r2 is not None]
+    avg_r2 = sum(r2_values) / len(r2_values) if r2_values else None
+
+    plt.title(
+        f"Top {k} Features by Year for {format_feature_name(target_variable)}"
+        + (f" (Avg. R²: {avg_r2:.4f})" if avg_r2 else "")
+    )
     plt.xlabel("Year")
+    plt.ylabel("Feature Importance")
+    plt.legend([format_feature_name(f) for f in top_features], title="Features")
     plt.xticks(rotation=45)
-    plt.legend(title="Feature", bbox_to_anchor=(1.05, 1), loc="upper left")
     plt.tight_layout()
     plt.show()
 
-    return top_k_features
+    return top_features
 
 
 def plot_feature_avg_variance_rf(models, target_variable: str, top_k_features):
@@ -178,7 +344,7 @@ def plot_feature_avg_variance_rf(models, target_variable: str, top_k_features):
     avg_importance = df[top_k_features].mean(axis=0)
     var_importance = df[top_k_features].var(axis=0)
 
-    plt.figure(figsize=(14, 6))
+    plt.figure(figsize=(20, 12))
     plt.bar(
         avg_importance.index,
         avg_importance,
@@ -203,9 +369,29 @@ def plot_feature_time_series_rf(models, target_variable: str, top_k_features):
 
     Args:
         models (dict): Dictionary of Random Forest models by year.
+        target_variable (str): Name of the target variable.
         top_k_features (list): List of top k features to plot.
     """
     feature_importances = {}
+    r2_scores = {}
+
+    # Format feature names for better readability
+    def format_feature_name(feature):
+        if "." in feature:
+            metric, category = feature.split(".")
+            # Get readable metric and category names from mappings if available
+            if metric in metric_mapping:
+                metric = metric_mapping[metric]
+            if category in category_mapping:
+                category = category_mapping[category]
+            return f"{metric} - {category}"
+        return feature
+
+    # Create a mapping from original to formatted names
+    formatted_names = {
+        feature: format_feature_name(feature) for feature in top_k_features
+    }
+    formatted_target = format_feature_name(target_variable)
 
     for year, model_dict in models.items():
         model = model_dict["model"]
@@ -213,28 +399,79 @@ def plot_feature_time_series_rf(models, target_variable: str, top_k_features):
         importances = model.feature_importances_
         feature_importances[year] = dict(zip(feature_names, importances))
 
+        # Store R² scores from cross-validation results
+        if "cv_results" in model_dict and "R²" in model_dict["cv_results"]:
+            r2_scores[year] = model_dict["cv_results"]["R²"]["mean"]
+        # Fallback to metrics if cv_results is not available
+        elif "metrics" in model_dict and "R²" in model_dict["metrics"]:
+            r2_scores[year] = model_dict["metrics"]["R²"]
+
     df = pd.DataFrame(feature_importances).T.fillna(0)
     df_top = df[top_k_features]
 
     # Define different markers
     markers = ["o", "s", "^", "D", "v", "<", ">", "p", "h", "8"]
 
-    plt.figure(figsize=(14, 6))
+    # Create figure with increased width to accommodate both legend and R² text box
+    fig, ax = plt.subplots(figsize=(22, 10))  # Increased width from 20 to 22
+
+    # Plot each feature
     for i, feature in enumerate(top_k_features):
         marker = markers[i % len(markers)]
-        plt.plot(
+        ax.plot(
             df_top.index,
             df_top[feature],
             marker=marker,
-            label=feature,
+            label=formatted_names[feature],
+            linewidth=2,
+            markersize=8,
         )
 
-    plt.xlabel("Year")
-    plt.ylabel("Feature Importance")
-    plt.title(f"Feature Importance Over Time for {target_variable} (Random Forest)")
-    plt.legend(title="Features", bbox_to_anchor=(1.05, 1), loc="upper left")
+    ax.set_xlabel("Year", fontsize=14)
+    ax.set_ylabel("Feature Importance", fontsize=14)
+    if formatted_target == "Graduation Rate - Total":
+        formatted_target = "Graduation Rate"
+    elif formatted_target == "College Readiness Rate - Total":
+        formatted_target = "College Readiness Rate"
+    ax.set_title(
+        f"Feature Importance Over Time for {formatted_target} (Random Forest)",
+        fontsize=16,
+    )
+
+    # Create legend and place it on the right side
+    ax.legend(
+        title="Features",
+        bbox_to_anchor=(1.02, 1),  # Moved slightly closer to the plot
+        loc="upper left",
+        fontsize=12,
+        title_fontsize=14,
+        edgecolor="black",
+        borderaxespad=0.0,
+    )
+
+    # Add R² values text box with better positioning
+    if r2_scores:
+        sorted_years = sorted(r2_scores.keys())
+        r2_text = "R² Values:\n" + "\n".join(
+            [f"{year}: {r2_scores[year]:.4f}" for year in sorted_years]
+        )
+        avg_r2 = sum(r2_scores.values()) / len(r2_scores)
+        r2_text += f"\n\nAverage: {avg_r2:.4f}"
+        ax.text(
+            0.92,
+            0.72,
+            r2_text,
+            transform=ax.transAxes,
+            fontsize=12,
+            horizontalalignment="center",
+            bbox=dict(boxstyle="round,pad=0.25", edgecolor="black", facecolor="white"),
+        )
+
     plt.xticks(rotation=45)
-    plt.tight_layout()
+    plt.grid(True, linestyle="--", alpha=0.7)
+
+    # Adjust the layout to make room for the legend
+    plt.tight_layout(rect=[0, 0, 0.85, 1])  # Increased right margin from 0.75 to 0.85
     plt.show()
 
 

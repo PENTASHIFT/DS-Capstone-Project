@@ -11,8 +11,74 @@ from sklearn.metrics import (
     mean_absolute_error,
     mean_squared_error,
     r2_score,
-    make_scorer
+    make_scorer,
 )
+
+
+category_mapping = {
+    "RB": "African American",
+    "RI": "American Indian or Alaska Native",
+    "RA": "Asian",
+    "RF": "Filipino",
+    "RH": "Hispanic or Latino",
+    "RD": "Not Reported",
+    "RP": "Pacific Islander",
+    "RT": "Two or More Races",
+    "RW": "White",
+    "GM": "Male",
+    "GF": "Female",
+    "GX": "Non-Binary Gender",
+    "GZ": "Missing Gender",
+    "SE": "English Learners",
+    "SD": "Students with Disabilities",
+    "SS": "Socioeconomic",
+    "SM": "Migrant",
+    "SF": "Foster",
+    "SH": "Homeless",
+    "09": "9th Grade",
+    "10": "10th Grade",
+    "11": "11th Grade",
+    "12": "12th Grade",
+    "TA": "Total",
+}
+
+metric_mapping = {
+    "MeritRate": "Merit Rate",
+    "OtherRate": "Other Rate",
+    "SchoolCode": "School Code",
+    "Merit": "Merit",
+    "AdultEd": "Adult Education",
+    "CohortStudents": "Cohort Students",
+    "BiliteracyRate": "Biliteracy Rate",
+    "RegHSDiplomaRate": "Graduation Rate",
+    "DropoutRate": "Dropout Rate",
+    "UniReqsPercent": "College Readiness Rate",
+    "StillEnrolledRate": "Still Enrolled Rate",
+    "AdultEdRate": "Adult Education Rate",
+    "ExemptionRate": "Exemption Rate",
+    "GEDRate": "GED Rate",
+    "EO": "English Only",
+    "RFEP": "Reclassified Fluent English Proficient",
+    "CPP": "California Proficiency Program",
+    "IFEP": "Initial Fluent English Proficient",
+    "EL03Y": "English Learner for 0-3 years",
+    "EL6+Y": "English Learner for 6+ years",
+    "CPPRate": "California Proficiency Program Rate",
+    "LTEL": "Long-Term English Learner",
+    "AR": "At-Risk"
+}
+
+
+def format_feature_name(feature):
+    if "." in feature:
+        metric, category = feature.split(".")
+        # Get readable metric and category names from mappings if available
+        if "metric_mapping" in globals() and metric in metric_mapping:
+            metric = metric_mapping[metric]
+        if "category_mapping" in globals() and category in category_mapping:
+            category = category_mapping[category]
+        return f"{metric} - {category}"
+    return feature
 
 
 def train_xgboost_model(
@@ -93,6 +159,13 @@ def train_xgboost_model(
         plt.tight_layout()
         plt.show()
 
+    if print_results:
+        print(f"Model trained for target: {target_column}")
+        print(f"Mean Squared Error (MSE): {mse:.4f}")
+        print(f"Root Mean Squared Error (RMSE): {rmse:.4f}")
+        print(f"Mean Absolute Error (MAE): {mae:.4f}")
+        print(f"R^2 Score: {r2:.4f}")
+
     return {
         "model": xgb_regressor,
         "y_pred": y_pred,
@@ -159,19 +232,21 @@ def plot_xgb_predicted_actual(
 plt.style.use("default")
 
 
-def plot_top_k_features(models, model_type, importance_type, target_variable: str, k=5):
+def plot_top_k_features(models, model_type, target_variable: str, k=5):
     feature_importances = {}
 
-    for year, model in models.items():
-        importance = (
-            model["model"].get_booster().get_score(importance_type=importance_type)
-        )
-        sorted_importance = sorted(
-            importance.items(), key=lambda x: x[1], reverse=True
-        )[:k]
-        feature_importances[year] = {
-            feature: score for feature, score in sorted_importance
-        }
+    if isinstance(models, dict):
+        for year, model in models.items():
+            importance = model["model"].get_booster().get_score(importance_type="gain")
+            sorted_importance = sorted(
+                importance.items(), key=lambda x: x[1], reverse=True
+            )[:k]
+            feature_importances[year] = {
+                feature: score for feature, score in sorted_importance
+            }
+    else:
+        # Only one model
+        importance = model.get_booster().get_score(importance_type="gain")
 
     df = pd.DataFrame(feature_importances).T.fillna(0)
     mean_importance = df.mean().sort_values(ascending=False)
@@ -181,11 +256,8 @@ def plot_top_k_features(models, model_type, importance_type, target_variable: st
     plt.figure(figsize=(14, 6))
     ax = df_top.plot(kind="bar", figsize=(14, 6), width=0.8)
 
-    plt.title(
-        f"Top {k} Features by Year for {target_variable} ({model_type}, {importance_type})"
-    )
+    plt.title(f"Top {k} Features for {target_variable} ({model_type})")
     plt.ylabel("Feature Importance")
-    plt.xlabel("Year")
     plt.xticks(rotation=45)
     plt.legend(title="Feature", bbox_to_anchor=(1.05, 1), loc="upper left")
     plt.tight_layout()
@@ -201,6 +273,69 @@ def plot_top_k_features(models, model_type, importance_type, target_variable: st
     top_features = top_features.sort_values(ascending=False).head(k)
     return top_features.index.tolist()
 
+
+def plot_top_features(cv_results, target_variable, top_n=10, figsize=(12, 8)):
+    """
+    Plots the top features by importance across all years in a horizontal bar chart.
+
+    Args:
+        cv_results (dict): Dictionary containing cross-validation results
+        target_variable (str): Name of the target variable for the plot title
+        top_n (int): Number of top features to display
+        figsize (tuple): Figure size as (width, height)
+
+    Returns:
+        list: List of the top feature names
+    """
+    model = cv_results["model"]
+    feature_names = cv_results["feature_names"]
+    importances = dict(zip(feature_names, model.feature_importances_))
+
+    avg_importances = {feature: values for feature, values in importances.items()}
+    top_features = sorted(avg_importances.items(), key=lambda x: x[1], reverse=True)[:top_n]
+
+    top_features = top_features[::-1] 
+    
+    feature_names = [format_feature_name(f[0]) for f in top_features]
+    importance_values = [f[1] for f in top_features]
+
+    fig, ax = plt.subplots(figsize=figsize)
+
+    y_pos = range(len(feature_names))
+    ax.barh(
+        y_pos,
+        importance_values,
+        align="center",
+        color="navy",
+        edgecolor="navy",
+        alpha=0.8,
+    )
+
+    model_stats = (
+        f"RMSE: {cv_results['cv_results']['RMSE']['mean']:.4f} ± {cv_results['cv_results']['RMSE']['std']:.4f}\n"
+        f"MAE: {cv_results['cv_results']['MAE']['mean']:.4f} ± {cv_results['cv_results']['MAE']['std']:.4f}\n"
+        f"R²: {cv_results['cv_results']['R^2']['mean']:.4f} ± {cv_results['cv_results']['R^2']['std']:.4f}"
+    )
+    
+    ax.text(
+        0.98, 0.05, model_stats,
+        transform=ax.transAxes,
+        fontsize=10,
+        verticalalignment='bottom',
+        horizontalalignment='right',
+        bbox=dict(boxstyle='round', facecolor='white', alpha=0.8)
+    )
+
+    ax.set_yticks(y_pos)
+    ax.set_yticklabels(feature_names)
+    ax.set_xlabel("Feature Importance")
+    ax.set_title(f"Top Features by Importance for {target_variable} (XGBoost)")
+    ax.grid(axis="x", linestyle="--", alpha=0.6)
+
+    plt.tight_layout()
+    plt.show()
+
+    return [f[0] for f in sorted(avg_importances.items(), key=lambda x: x[1], reverse=True)[:top_n]]
 
 def plot_feature_avg_variance(
     models, model_type, importance_type, target_variable, k=5
