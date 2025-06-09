@@ -1,6 +1,8 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+import shap
+from sklearn.inspection import partial_dependence
 
 
 plt.style.use("default")
@@ -669,7 +671,7 @@ def plot_top_features_rf(cv_results, target_variable, top_n=10, figsize=(12, 8))
         alpha=0.8,
     )
 
-    r2_key = "R^2" if "R^2" in cv_results["cv_results"] else "R²"
+    r2_key = "R^2" if "R^2" in cv_results["metrics"] else "R²"
 
     model_stats = (
         f"RMSE: {cv_results['metrics']['RMSE']['mean']:.4f} ± {cv_results['metrics']['RMSE']['std']:.4f}\n"
@@ -708,3 +710,49 @@ def plot_top_features_rf(cv_results, target_variable, top_n=10, figsize=(12, 8))
             :top_n
         ]
     ]
+
+
+def plot_feature_interaction(model, X, feature1_idx, feature2_idx, feature_names=None):
+    """
+    Creates a 2D interaction plot between two features.
+    
+    Args:
+        model: Trained XGBoost or Random Forest model
+        X: Feature dataset
+        feature1_idx: Index of first feature
+        feature2_idx: Index of second feature
+        feature_names: Optional list of feature names
+    """
+    if feature_names is None:
+        feature_names = X.columns.tolist()
+    
+    ### Create meshgrid
+    x1 = np.linspace(X.iloc[:, feature1_idx].min(), X.iloc[:, feature1_idx].max(), 50)
+    x2 = np.linspace(X.iloc[:, feature2_idx].min(), X.iloc[:, feature2_idx].max(), 50)
+    X1, X2 = np.meshgrid(x1, x2)
+    
+    ### Create prediction dataset
+    X_pred = X.iloc[0:1].copy()
+    X_pred = pd.concat([X_pred] * (50 * 50), ignore_index=True)
+    
+    idx = 0
+    for i in range(50):
+        for j in range(50):
+            X_pred.iloc[idx, feature1_idx] = X1[i, j]
+            X_pred.iloc[idx, feature2_idx] = X2[i, j]
+            idx += 1
+    
+    ### Make predictions
+    y_pred = model.predict(X_pred)
+    
+
+    Z = y_pred.reshape(50, 50)
+    
+    plt.figure(figsize=(12, 8))
+    plt.contourf(X1, X2, Z, cmap='viridis', alpha=0.7)
+    plt.colorbar(label='Predicted Value')
+    plt.xlabel(format_feature_name(feature_names[feature1_idx]))
+    plt.ylabel(format_feature_name(feature_names[feature2_idx]))
+    plt.title(f'Interaction Between {format_feature_name(feature_names[feature1_idx])} and {format_feature_name(feature_names[feature2_idx])}')
+    plt.tight_layout()
+    plt.show()

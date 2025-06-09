@@ -177,11 +177,6 @@ def cross_validate_random_forest(
             "std": mae_scores.std(),
             "scores": mae_scores,
         },
-        "MSE": {
-            "mean": (rmse_scores**2).mean(),
-            "std": (rmse_scores**2).std(),
-            "scores": rmse_scores**2,
-        },
         "R^2": {"mean": r2_scores.mean(), "std": r2_scores.std(), "scores": r2_scores},
     }
 
@@ -210,7 +205,6 @@ def cross_validate_random_forest(
         "y_pred": y_pred,
         "y_test": y_test,
         "metrics": {
-            "MSE": cv_results["RMSE"],
             "RMSE": cv_results["RMSE"],
             "R^2": cv_results["R^2"],
             "MAE": cv_results["MAE"],
